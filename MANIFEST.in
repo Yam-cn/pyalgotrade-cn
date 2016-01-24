@@ -1,0 +1,1 @@
+global-exclude .DS_Store *.pyc *.pyo
