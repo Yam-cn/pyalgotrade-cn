@@ -1,9 +1,0 @@
-*pyc
-MANIFEST
-doc/_build
-
-dist
-build
-PyAlgoTrade.egg-info
-
-testcases/twitter_credentials.py
