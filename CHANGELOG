@@ -1,0 +1,180 @@
+Version 0.18 (TBD)
+. [NEW] Returns analyzer now store datetimes along with each sample. Thanks MatthiasKauer for implementing this.
+
+Version 0.17 (10/May/2015)
+. [NEW] Hurst exponent technical indicator (pyalgotrade.technical.hurst.HurstExponent).
+. [NEW] Added support for slippage models (pyalgotrade.broker.slippage) including a VolumeShareSlippage model like the one in Zipline (https://github.com/quantopian/zipline).
+. [FIX] Automatically reconnect bitstamp feed if the connection gets closed.
+. [FIX] Close connections ASAP to avoid running out of file descriptors when GC gets delayed. Thanks Tibor Kiss for reporting and fixing this.
+. [FIX] Fail when placing Market-On-Close orders when backtesting with intraday data. Right now this is not supported.
+. [FIX] Bitstamp backtesting broker was allowing trades below $5.
+. [FIX] Updated default Bitstamp fee to 0.25%.
+. [FIX] Fixed a bug when resampling localized intraday datetimes.
+. [BREAKING CHANGE] Backtesting broker fill strategies moved to pyalgotrade.broker.fillstrategy module.
+
+Version 0.16 (31/Aug/2014)
+. [NEW] Added support for live trading Bitcoin strategies through Bitstamp.
+. [NEW] Support for downloading and loading bars from Quandl (pyalgotrade.tools.quandl and pyalgotrade.barfeed.quandlfeed).
+. [NEW] Support for loading Bitcoin Charts historical trades CSV files (pyalgotrade.bitcoincharts.barfeed).
+. [NEW] Support for Google Finance CSV files (pyalgotrade.barfeed.googlefeed.Feed). Thanks Maciej Żok for implementing this.
+. [BREAKING CHANGE] pyalgotrade.bitstamp.client.Client was removed and the functionality is now included in pyalgotrade.bitstamp.barfeed.LiveTradeFeed.
+. [BREAKING CHANGE] Strategy.onOrderUpdated now gets called for all order events, including those generated using the position interface.
+. [FIX] Fixed a bug in pyalgotrade.tools.resample and pyalgotrade.dataseries.resampled.ResampledBarDataSeries when using grouping frequencies greater than 1 day.
+. [FIX] Bitstamp BacktestingBroker and PaperTradingBroker will now fail to place orders without enough cash or BTC.
+. [FIX] Fixed a rounding error in pyalgotrade.bitstamp.broker.PaperTradingBroker.
+. [FIX] Fixed a bug in BarFeed.getCurrentDateTime.
+. [FIX] Fixed a bug in pyalgotrade.technical.cross.cross_above and pyalgotrade.technical.cross.cross_below.
+. [REMOVED] Removed Google App Engine support.
+
+Version 0.15 (30/Mar/2014)
+. [NEW] Xignite support (http://www.xignite.com/).
+. [NEW] Added support for papertrading Bitcoin strategies through Bitstamp.
+. [NEW] Partial fill support for orders.
+. [NEW] Added logging methods to the Strategy class.
+. [NEW] Average True Range (ATR) technical indicator (pyalgotrade.technical.atr.ATR).
+. [NEW] LeastSquaresRegression filter (pyalgotrade.technical.linreg.LeastSquaresRegression). Depends on SciPy.
+. [NEW] MACD technical indicator (pyalgotrade.technical.macd.MACD).
+. [NEW] pyalgotrade.tools.resample and pyalgotrade.dataseries.resampled.ResampledBarDataSeries now support any grouping frequency.
+. [NEW] pyalgotrade.barfeed.yahoofeed.Feed now supports weekly bars.
+. [NEW] Added marketOrder method to the Strategy class to place market orders.
+. [NEW] Added limitOrder method to the Strategy class to place limit orders.
+. [NEW] Added stopOrder method to the Strategy class to place stop orders.
+. [NEW] Added stopLimitOrder method to the Strategy class to place stop limit orders.
+. [BREAKING CHANGE] Support for auto-exit on session close was removed.
+. [BREAKING CHANGE] Removed some deprecated methods from DataSeries (appendValue, appendValueWithDatetime, getValue, getValues, getValuesAbsolute, getFirstValidPos and getLength).
+. [BREAKING CHANGE] Fail when resubmitting orders.
+. [BREAKING CHANGE] Fail when changing order properties that are set during initialization.
+. [BREAKING CHANGE] The last parameter to broker.backtesting.FillStrategy.fillStopLimitOrder was removed. FillStrategy will now handle all the details for order filling to allow better customization.
+. [BREAKING CHANGE] Changed the order of the stopPrice and limitPrice parameters in Strategy.enterLongStopLimit, Strategy.enterShortStopLimit and Position.exit.
+. [BREAKING CHANGE] Removed MtGox support.
+. [BREAKING CHANGE] pyalgotrade.technical.trend.Slope was moved into the pyalgotrade.technical.linreg package.
+. [CHANGE] setUseAdjustedValues should now be called on the strategy instead of the broker.
+. [CHANGE] Position.getUnrealizedNetProfit and Position.getUnrealizedReturn will automatically use the last available price if None is given.
+. [CHANGE] Daily bars from Yahoo and NinjaTrader CSV feeds are loaded with time set to 00:00:00.
+. [CHANGE] All classes now inherit from object.
+. [CHANGE] The backtesting broker ignores volumeLimit when using trade bars.
+. [CHANGE] The backtesting broker now emits the cancelation event when cancelation is requested, not in the next bar.
+. [FIX] Fixed a bug in pyalgotrade.technical.roc.RateOfChange when there was no change and the current value was 0.
+. [FIX] pyalgotrade.tools.resample and pyalgotrade.dataseries.resampled.ResampledBarDataSeries now set the datetime to that of the beggining of the bar.
+
+Version 0.14 (12/Oct/2013)
+. [NEW] Event profiler inspired in QSTK (pyalgotrade.eventprofiler).
+. [NEW] Cumulative returns filter (pyalgotrade.technical.cumret.CumulativeReturn).
+. [NEW] Z-Score filter (pyalgotrade.technical.stats.ZScore).
+. [NEW] Added support for other types of time-series data in CSV format (pyalgotrade.feed.csvfeed.Feed).
+. [FIX] Fixed a bug with loggers when using the optimizer: https://github.com/gbeced/pyalgotrade/issues/10. 
+. [FIX] Fixed a bug in the trades analyzer. Proportional commissions when switching from long to short or viceversa were not properly calculated. Thanks Sam Jackson for reporting this and providing a patch.
+. [FIX] Fixed a bug when using the optimizer and a broker with adjusted values.
+. [CHANGE] Google App Engine: Increased task granularity to improve performance.
+. [CHANGE] broker.backtesting.FillStrategy was changed to return a broker.backtesting.FillInfo instance.
+. [CHANGE] broker.backtesting.DefaultStrategy now takes bar volume into account to fill an order.
+. [CHANGE] pyalgotrade.barfeed.BarFeed was renamed to pyalgotrade.barfeed.BaseBarFeed and pyalgotrade.barfeed.BasicBarFeed was removed.
+. [CHANGE] Event handlers for pyalgotrade.barfeed.BaseBarFeed.getNewBarsEvent should expect two parameters: datetime and bars.
+
+Version 0.13 (26/Aug/2013)
+. [NEW] Added support for handling realtime Twitter events (pyalgotrade.twitter.feed).
+. [NEW] Added support for backtesting and papertrading Bitcoin strategies through MtGox. Thanks Jeremi Joslin for helping with the testing.
+. [NEW] Bar feeds now support setting the maximum number of values to hold for the BarDataSeries in case you don't want them to grow too much.
+. [NEW] pyalgotrade.dataseries.SequenceDataSeries and DataSeries filters (everything inside the pyalgotrade.technical package) now support setting the maximum number of values to hold in case you don't want them to grow too much.
+. [NEW] StrategyPlotter now calls autofmt_xdate on the figure before plotting it. Thanks Thomas Jung for suggesting this.
+. [NEW] StrategyPlotter now supports only building the figure so you can customize it (StrategyPlotter.buildFigure).
+. [NEW] bar.Bar was optimized to use less memory. Thanks Tibor Kiss for suggesting this.
+. [NEW] Added tools to resample BarFeeds to different frequencies and using them (pyalgotrade.tools.resample and pyalgotrade.barfeed.csvfeed.GenericBarFeed).
+. [NEW] Added a BarDataSeries that can resample another BarDataSeries to a higher frequency (pyalgotrade.dataseries.resampled.ResampledBarDataSeries).
+. [NEW] High and Low technical indicators (pyalgotrade.technical.highlow.High and pyalgotrade.technical.highlow.Low).
+. [CHANGE] pyalgotrade.technical.roc.RateOfChange indicator was changed and now it doesn't multiply by 100 the results.
+. [CHANGE] The pyalgotrade.technical.trend package does not depend on SciPy any more.
+. [CHANGE] Strategy class was renamed to BacktestingStrategy (the old name is still supported in this version).
+. [CHANGE] Max. drawdown duration is now returned as a datetime.timedelta object.
+. [CHANGE] Sharpe Ratio analyzer was modified to better support intraday trading. The tradingPeriods parameter is not supported anymore.
+. [CHANGE] In order to resubmit the exit order for a position, the orignal exit order has to be canceled first using cancelExit.
+. [CHANGE] DataSeries and DataSeries filters (everything inside the pyalgotrade.technical package) were refactored to an event based model.
+. [CHANGE] BarValueDataSeries and BarDataSeries were moved from pyalgotrade.dataseries into pyalgotrade.bards.dataseries.
+. [CHANGE] pyalgotrade.technical.cross.CrossAbove and pyalgotrade.technical.cross.CrossBelow were refactored as functions (pyalgotrade.technical.cross.cross_above and pyalgotrade.technical.cross.cross_below). They are not DataSeries any more.
+. [CHANGE] pyalgotrade.technical.DataSeriesFilter was removed. DataSeries filters now have to be modeled using pyalgotrade.technical.EventWindow and pyalgotrade.technical.EventBasedFilter classes.
+. [CHANGE] pyalgotrade.dataseries.SequenceDataSeries constructor no longer accepts values and datetimes.
+. [CHANGE] pyalgotrade.dataseries.datetime_aligned was moved to pyalgotrade.dataseries.aligned.datetime_aligned.
+
+Version 0.12 (20/Apr/2013)
+. [NEW] pyalgotrade.optimizer now has worker names associated with each worker. Thanks Matthieu Locas for implementing this.
+. [NEW] StrategyPlotter now allows plotting custom functions.
+. [NEW] Optimizations in different areas.
+. [NEW] Standard deviation technical indicator (pyalgotrade.technical.stats.StdDev).
+. [NEW] Bollinger Bands technical indicator (pyalgotrade.technical.bollinger.BollingerBands).
+. [FIX] Fixed a bug in EMA technical that could lead to max. recursion limit error.
+. [FIX] Fixed a bug in the Strategy class that had a big impact on execution time. Bookkeeping for active positions and orders was not handled properly.
+
+Version 0.11 (17/Mar/2013)
+. [NEW] DataSeries now provide the datetime associated with each value (getDateTimes), making it easier to plot using matplotlib.
+. [NEW] Function to align two DataSeries with respect to time (pyalgotrade.dataseries.datetime_aligned).
+. [NEW] VWAP technical indicator (pyalgotrade.technical.vwap.VWAP).
+. [NEW] Line Break technical indicator (pyalgotrade.technical.linebreak.LineBreak).
+. [NEW] Methods to calculate unrealized returns and PnL in positions (getUnrealizedReturn and getUnrealizedNetProfit).
+. [FIX] An IndexError exception was raised in plotter.py when plotting many dataseries in the same subplot.
+
+Version 0.10 (11/Jan/2013)
+. [NEW] Sharpe Ratio analysis (pyalgotrade.stratanalyzer.sharpe.SharpeRatio).
+. [NEW] Max. drawdown and max. drawdown duration analysis (pyalgotrade.stratanalyzer.drawdown.DrawDown). Thanks Sedov Anton for reporting a bug in the early implementation.
+. [NEW] Returns analysis (pyalgotrade.stratanalyzer.returns.Returns).
+. [NEW] Trades analysis (pyalgotrade.stratanalyzer.trades.Trades).
+. [NEW] Support for bar timezones (pyalgotrade.marketsession).
+. [NEW] Support for sequence like operations in DataSeries (__getitem__ and __len__. getValue and getValueAbsolute will soon get deprecated).
+. [NEW] Support for mapping like operations in bar feeds (__getitem__ and __contains__).
+. [NEW] Support for mapping like operations in bar.Bars (__getitem__ and __contains__).
+. [NEW] Google App Engine: Added support for re-executing strategies.
+. [CHANGE] broker.backtesting.Broker.getValue no longer needs the bars as a parameter. It will take those out of the feed.
+. [FIX] broker.backtesting.getActiveOrders was not returning all orders during event dispatching.
+. [FIX] Fixed returns calculations for short positions. Thanks John Fawcett for explaining this.
+. [FIX] Fixed a bug in the Strategy class and the backtesting broker when dealing with multiple instruments. Was not handling absence of bars appropriately. Thanks Fabian Braennstroem for reporting this.
+. [FIX] Additional DataSeries added to the portfolio subplot were not showing. Thanks Sedov Anton for reporting this.
+. [FIX] Additional subplots (those created using getOrCreateSubplot) are now ordered as created. Thanks Sedov Anton for reporting this and suggesting the fix.
+
+Version 0.9 (1/Sep/2012)
+. [NEW] Added a method to the strategy class to get notified when an order gets updated (onOrderUpdated). This is only called if the order was placed using the broker interface directly.
+. [FIX] A KeyError exception was raised in the strategy class when placing orders using the broker interface directly. Thanks 'Femto Trader' for reporting this.
+
+Version 0.8 (28/Aug/2012)
+. [NEW] StrategyPlotter now plots each instrument in a separate subplot. getMainSubplot was replaced by getIntrumentSubplot.
+. [NEW] Strategy.exitPosition allows setting the exit order as GTC or not, or matching the entry order (default).
+. [FIX] Was hitting an AssertionError in the strategy class when overwritting exit orders with new ones.
+. [FIX] Set exit-on-session-close orders as GTC.
+
+Version 0.7 (22/Aug/2012)
+. [NEW] Backtesting broker allows customizing of order filling strategies.
+. [NEW] Added support Stop orders. Thanks Tibor Kiss for adding this.
+. [NEW] Added support StopLimit orders. Thanks Tibor Kiss for adding this.
+. [NEW] TA-Lib integration (pyalgotrade.talibext.indicator).
+. [NEW] Official support for NinjaTrader generated CSV files (pyalgotrade.barfeed.ninjatraderfeed.Feed). csvfeed.NinjaTraderRowParser was removed.
+. [CHANGE] pyalgotrade.barfeed.csvfeed.YahooFeed was moved to pyalgotrade.barfeed.yahoofeed.Feed. pyalgotrade.barfeed.csvfeed.YahooFeed still works but it will be removed soon.
+. [CHANGE] Major changes to the broker interface to support other broker types. These changes are not backwards compatible. Thanks Tibor Kiss for adding this.
+. [FIX] Was not honoring the GTC attribute when submiting exit orders from inside the position classes.
+. [FIX] Was not getting better prices (when available) for Limit orders. Thanks Tibor Kiss for reporting this.
+
+Version 0.6 (26/Jun/2012)
+. [NEW] Initial support for NinjaTrader export format (csvfeed.NinjaTraderRowParser).
+. [NEW] pyalgotrade.optimizer.server.serve now returns the best results found.
+. [FIX] Fixes to the optimizer.local module when running on Windows.
+. [FIX] The marker style used by plotter.py was not supported in some matplotlib versions. Thanks Tibor Kiss for fixing this.
+. [FIX] Socket used to find a random port to listen on was not being closed (optimizer.local.find_port). Thanks Tibor Kiss for fixing this.
+
+Version 0.5 (21/Jun/2012)
+. [NEW] StrategyPlotter supports plotting a range.
+. [NEW] Stochastic oscillator supports using adjusted values.
+. [NEW] Added support for optimizing strategies inside Google App Engine.
+. [NEW] Improved optimizer module to distribute strategy executions in chunks.
+
+Version 0.4 (8/May/2012)
+. [NEW] Rate of change technical indicator.
+. [NEW] Stochastic oscillator technical indicator.
+. [FIX] Added error checking to yahoofinance.get_daily_csv.
+. [FIX] Normalized some method names in StrategyPlotter.
+
+Version 0.3 (22/Apr/2012)
+. [NEW] Support for plotting strategies (StrategyPlotter).
+
+Version 0.2 (14/Apr/2012)
+. [NEW] CrossAbove and CrossBelow technical indicators.
+. [NEW] Limit order support.
+. [FIX] Fixed a bug when a position was set to exit on session close but the entry was not filled.
+
+Version 0.1 (27/Mar/2012)
