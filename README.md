@@ -1,6 +1,11 @@
 
 Pyalgotrade-cn 在原版的基础上加入了A股历史行情回测，并整合了tushare提供实时行情。以便大家对自己的策略进行回测和模拟测试。
 
+本次更新的内容：
+
+ * 引入tushare实时行情
+ * stratlib提供了两个经典策略(DT, Bollinger_bandit)
+
 提出需求，参加讨论，请加群：300349971
 
 
