@@ -1,11 +1,10 @@
-PyAlgoTrade
-===========
 
-[![version status](https://pypip.in/v/pyalgotrade/badge.png)](https://pypi.python.org/pypi/pyalgotrade)
-[![downloads](https://pypip.in/d/pyalgotrade/badge.png)](https://pypi.python.org/pypi/pyalgotrade)
-[![build status](https://travis-ci.org/gbeced/pyalgotrade.png?branch=master)](https://travis-ci.org/gbeced/pyalgotrade)
-[![Coverage Status](https://coveralls.io/repos/gbeced/pyalgotrade/badge.svg?branch=master)](https://coveralls.io/r/gbeced/pyalgotrade?branch=master)
+Pyalgotrade-cn 在原版的基础上加入了A股历史行情回测，并整合了tushare提供实时行情。以便大家对自己的策略进行回测和模拟测试。
 
+提出需求，参加讨论，请加群：300349971
+
+
+以下是原版的介绍：
 
 PyAlgoTrade is an **event driven algorithmic trading** Python library. Although the initial focus
 was on **backtesting**, **paper trading** is now possible using:
