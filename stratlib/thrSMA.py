@@ -43,6 +43,9 @@ class thrSMA(strategy.BacktestingStrategy):
     def onEnterCanceled(self, position):
         self.__position = None
 
+    def onEnterOK(self):
+        pass
+
     def onExitOk(self, position):
         self.__position = None
         #self.info("long close")
@@ -74,8 +77,8 @@ class thrSMA(strategy.BacktestingStrategy):
     def onBars(self, bars):
         # If a position was not opened, check if we should enter a long position.
         
-        if self.__ma3[-1]is None:
-            return
+        if self.__ma2[-1]is None:
+            return 
             
         if self.__position is not None:
             if not self.__position.exitActive() and cross.cross_below(self.__ma1, self.__ma2) > 0:
@@ -86,6 +89,7 @@ class thrSMA(strategy.BacktestingStrategy):
             if self.buyCon1() and self.buyCon2():
                 shares = int(self.getBroker().getCash() * 0.2 / bars[self.__instrument].getPrice())
                 self.__position = self.enterLong(self.__instrument, shares)
+                print bars[self.__instrument].getDateTime(), bars[self.__instrument].getPrice()
                 #self.info("buy %s" % (bars.getDateTime()))
     
     
