@@ -17,14 +17,27 @@
 """
 .. moduleauthor:: Gabriel Martin Becedillas Ruiz <gabriel.becedillas@gmail.com>
 """
-
 import collections
 
 import broker
 
 import matplotlib.pyplot as plt
 from matplotlib import ticker
+import numpy
+from matplotlib.ticker import Formatter
 
+class MyFormatter(Formatter):
+    def __init__(self, dates, fmt='%Y-%m-%d'):
+        self.dates = dates
+        self.fmt = fmt
+
+    def __call__(self, x, pos=0):
+        'Return the label for time x at position pos'
+        ind = int(round(x))
+        if ind >= len(self.dates) or ind < 0:
+            return ''
+
+        return self.dates[ind].strftime(self.fmt)
 
 def get_last_value(dataSeries):
     ret = None
@@ -78,7 +91,10 @@ class Series(object):
         values = []
         for dateTime in dateTimes:
             values.append(self.getValue(dateTime))
-        mplSubplot.plot(dateTimes, values, color=color, marker=self.getMarker())
+        #mplSubplot.plot(dateTimes, values, color=color, marker=self.getMarker()) # here!!!
+        mplSubplot.plot(numpy.arange(len(dateTimes)), values, color=color, marker=self.getMarker())
+        formatter = MyFormatter(dateTimes)
+        mplSubplot.xaxis.set_major_formatter(formatter)
 
 
 class BuyMarker(Series):
@@ -102,7 +118,16 @@ class SellMarker(Series):
     def needColor(self):
         return True
 
+class ScaMarker(Series):
+    def getColor(self):
+        return 'w'
 
+    def getMarker(self):
+        return "*"
+
+    def needColor(self):
+        return True
+        
 class CustomMarker(Series):
     def __init__(self):
         Series.__init__(self)
@@ -203,6 +228,7 @@ class Subplot(object):
         self.__series = {}  # Series by name.
         self.__callbacks = {}  # Maps a function to a Series.
         self.__nextColor = 0
+        self.__counter = 0
 
     def __getColor(self, series):
         ret = series.getColor()
@@ -215,6 +241,17 @@ class Subplot(object):
         return len(self.__series) == 0
 
     def addDataSeries(self, label, dataSeries, defaultClass=LineMarker):
+        """Add a DataSeries to the subplot.
+
+        :param label: A name for the DataSeries values.
+        :type label: string.
+        :param dataSeries: The DataSeries to add.
+        :type dataSeries: :class:`pyalgotrade.dataseries.DataSeries`.
+        """
+        callback = lambda bars: get_last_value(dataSeries)
+        self.__callbacks[callback] = self.getSeries(label, defaultClass)
+        
+    def addDataSeriesS(self, label, dataSeries, defaultClass=ScaMarker):
         """Add a DataSeries to the subplot.
 
         :param label: A name for the DataSeries values.
@@ -245,9 +282,12 @@ class Subplot(object):
         self.addCallback(label, lambda x: level)
 
     def onBars(self, bars):
+        self.__counter += 1
         dateTime = bars.getDateTime()
+        #dateTime = range(len(dateTime)) # not here
         for cb, series in self.__callbacks.iteritems():
-            series.addValue(dateTime, cb(bars))
+            series.addValue(dateTime, cb(bars))    #!!!!!!!!!!
+            #series.addValue(self.__counter, cb(bars))  #not here
 
     def getSeries(self, name, defaultClass=LineMarker):
         try:
@@ -270,11 +310,15 @@ class Subplot(object):
             if series.needColor():
                 color = self.__getColor(series)
             series.plot(mplSubplot, dateTimes, color)
-
+            #series.plot(mplSubplot, numpy.arange(len(dateTimes)), color) # not this one
+            
         # Legend
+        #formatter = MyFormatter(dateTimes)
         mplSubplot.legend(self.__series.keys(), shadow=True, loc="best")
+        #mplSubplot.xaxis.set_major_formatter(formatter)
         self.customizeSubplot(mplSubplot)
-
+    
+    #def scatter(self, )
 
 class InstrumentSubplot(Subplot):
     """A Subplot responsible for plotting an instrument."""
@@ -283,16 +327,18 @@ class InstrumentSubplot(Subplot):
         self.__instrument = instrument
         self.__plotBuySell = plotBuySell
         self.__instrumentSeries = self.getSeries(instrument, InstrumentMarker)
+        self.__counter = 0
 
     def setUseAdjClose(self, useAdjClose):
         self.__instrumentSeries.setUseAdjClose(useAdjClose)
 
     def onBars(self, bars):
+        self.__counter += 1
         Subplot.onBars(self, bars)
         bar = bars.getBar(self.__instrument)
         if bar:
             dateTime = bars.getDateTime()
-            self.__instrumentSeries.addValue(dateTime, bar)
+            self.__instrumentSeries.addValue(dateTime, bar) # not here
 
     def onOrderEvent(self, broker_, orderEvent):
         order = orderEvent.getOrder()
@@ -331,15 +377,18 @@ class StrategyPlotter(object):
 
         strat.getBarsProcessedEvent().subscribe(self.__onBarsProcessed)
         strat.getBroker().getOrderUpdatedEvent().subscribe(self.__onOrderEvent)
+        self.__counter = 0
 
     def __checkCreateInstrumentSubplot(self, instrument):
         if instrument not in self.__barSubplots:
             self.getInstrumentSubplot(instrument)
 
     def __onBarsProcessed(self, strat, bars):
+        self.__counter += 1
         dateTime = bars.getDateTime()
-        self.__dateTimes.add(dateTime)
+        self.__dateTimes.add(dateTime) # not here
 
+        
         if self.__plotAllInstruments:
             for instrument in bars.getInstruments():
                 self.__checkCreateInstrumentSubplot(instrument)
@@ -354,7 +403,7 @@ class StrategyPlotter(object):
 
         # Feed the portfolio evolution subplot.
         if self.__portfolioSubplot:
-            self.__portfolioSubplot.getSeries("Portfolio").addValue(dateTime, strat.getBroker().getEquity())
+            self.__portfolioSubplot.getSeries("Portfolio").addValue(dateTime, strat.getBroker().getEquity()) # not here
             # This is in case additional dataseries were added to the portfolio subplot.
             self.__portfolioSubplot.onBars(bars)
 
@@ -398,8 +447,8 @@ class StrategyPlotter(object):
 
     def __buildFigureImpl(self, fromDateTime=None, toDateTime=None):
         dateTimes = _filter_datetimes(self.__dateTimes, fromDateTime, toDateTime)
-        dateTimes.sort()
-
+        dateTimes.sort()   
+        
         subplots = []
         subplots.extend(self.__barSubplots.values())
         subplots.extend(self.__namedSubplots.values())
@@ -409,15 +458,24 @@ class StrategyPlotter(object):
         # Build each subplot.
         fig, axes = plt.subplots(nrows=len(subplots), sharex=True, squeeze=False)
         mplSubplots = []
+
+        #formatter = MyFormatter(dateTimes)
+        
+        #ax.plot(numpy.arange(len(r)), r.close, 'o-')
         for i, subplot in enumerate(subplots):
             axesSubplot = axes[i][0]
+            #axesSubplot.plot(numpy.arange(len(dateTimes)))
+            #axesSubplot.xaxis.set_major_formatter(formatter)
             if not subplot.isEmpty():
                 mplSubplots.append(axesSubplot)
                 subplot.plot(axesSubplot, dateTimes)
+               
+                #subplot.plot(numpy.arange(len(dateTimes)), dateTimes)
+                #subplot.plot(axesSubplot, numpy.arange(len(dateTimes)))
                 axesSubplot.grid(True)
 
         return (fig, mplSubplots)
-
+    
     def buildFigure(self, fromDateTime=None, toDateTime=None):
         """Builds a matplotlib.figure.Figure with the subplots. Must be called after running the strategy.
 
@@ -443,3 +501,4 @@ class StrategyPlotter(object):
         fig, mplSubplots = self.__buildFigureImpl(fromDateTime, toDateTime)
         fig.autofmt_xdate()
         plt.show()
+        
