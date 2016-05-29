@@ -51,3 +51,12 @@ RUN pip install jupyter
 
 RUN cd /root; \
     git clone https://github.com/Yam-cn/pyalgotrade-cn.git
+
+WORKDIR /root/pyalgotrade-cn/
+
+ENV PYTHONPATH=/root/pyalgotrade-cn/
+ENV LD_LIBRARY_PATH=/root/pyalgotrade-cn/pyalgotrade/CTP/api/
+
+EXPOSE 8888
+
+ENTRYPOINT nohup /usr/local/bin/jupyter notebook --ip=0.0.0.0
