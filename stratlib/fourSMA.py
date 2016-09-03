@@ -123,52 +123,78 @@ class fourSMA(strategy.BacktestingStrategy):
         if cross.cross_above(self.__mass, self.__masl) > 0 and not self.__shortPos.exitActive():
             return True
 
-if __name__ == "__main__": 
+
+def testStrategy():
+    from pyalgotrade import bar
+    from pyalgotrade import plotter
+    
     strat = fourSMA    
-    instrument = '000001'
-    market = 'SZ'
-    fromDate = '20140101'
-    toDate ='20160101'
-    frequency = bar.Frequency.DAY
+    instrument = '600288'
+    market = 'SH'
+    fromDate = '20150101'
+    toDate ='20150601'
+    frequency = bar.Frequency.MINUTE
     paras = [2, 20, 60, 10]
     plot = True
     
     #############################################path set ############################33 
+    import os
     if frequency == bar.Frequency.MINUTE:
-        path = "..\\histdata\\min\\"
+        path = os.path.join('..', 'histdata', 'minute')
     elif frequency == bar.Frequency.DAY:
-        path = "..\\histdata\\day\\"
-    filepath = path + instrument + market + ".csv"
+        path = os.path.join('..', 'histdata', 'day')
+    filepath = os.path.join(path, instrument + market + ".csv")
     
     
     #############################################don't change ############################33  
-    from pyalgotrade.barfeed.csvfeed import GenericBarFeed
-
+    from pyalgotrade.cn.csvfeed import Feed
     
-    barfeed = GenericBarFeed(frequency)
+    barfeed = Feed(frequency)
     barfeed.setDateTimeFormat('%Y-%m-%d %H:%M:%S')
-    barfeed.addBarsFromCSV(instrument, filepath)
-    strat = strat(barfeed, instrument, *paras)
+    barfeed.loadBars(instrument, market, fromDate, toDate, filepath)
+    
+    pyalgotrade_id = instrument + '.' + market
+    strat = strat(barfeed, pyalgotrade_id, *paras)
+    
+    from pyalgotrade.stratanalyzer import returns
+    from pyalgotrade.stratanalyzer import sharpe
+    from pyalgotrade.stratanalyzer import drawdown
+    from pyalgotrade.stratanalyzer import trades
+    
+    retAnalyzer = returns.Returns()
+    strat.attachAnalyzer(retAnalyzer)
+    sharpeRatioAnalyzer = sharpe.SharpeRatio()
+    strat.attachAnalyzer(sharpeRatioAnalyzer)
+    drawDownAnalyzer = drawdown.DrawDown()
+    strat.attachAnalyzer(drawDownAnalyzer)
+    tradesAnalyzer = trades.Trades()
+    strat.attachAnalyzer(tradesAnalyzer)
     
     if plot:
-            plt = plotter.StrategyPlotter(strat, True, True, True)
-            mall , mals , masl , mass = strat.getSMA()
-#          #  print type(ma1)
-            plt.getInstrumentSubplot('indicator').addDataSeries("small", mall)
-            plt.getInstrumentSubplot('indicator').addDataSeries("smals", mals)
-            plt.getInstrumentSubplot('indicator').addDataSeries("smasl", masl)
-            plt.getInstrumentSubplot('indicator').addDataSeries("smass", mass)
-            
-            position = strat.getTest()
-            plt.getOrCreateSubplot("position").addDataSeriesS("position", position)
+        plt = plotter.StrategyPlotter(strat, True, True, True)
         
     strat.run()
     
     if plot:
         plt.plot()
         
+
+
+    #夏普率
+    sharp = sharpeRatioAnalyzer.getSharpeRatio(0.05)
+    #最大回撤
+    maxdd = drawDownAnalyzer.getMaxDrawDown()
+    #收益率
+    return_ = retAnalyzer.getCumulativeReturns()[-1]
+    #收益曲线
+    return_list = []
+    for item in retAnalyzer.getCumulativeReturns():
+        return_list.append(item)
         
         
+
+if __name__ == "__main__": 
+    testStrategy()
         
         
         

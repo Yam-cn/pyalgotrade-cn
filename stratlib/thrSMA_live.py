@@ -92,27 +92,29 @@ class thrSMA(strategy.BacktestingStrategy):
                 print bars[self.__instrument].getDateTime(), bars[self.__instrument].getPrice()
                 #self.info("buy %s" % (bars.getDateTime()))
 
+
 def runStratOnTushare(strat, paras, security_id, market, frequency):    
-    from pyalgotrade.tushare.barfeed import TuShareLiveFeed
-    liveFeed = TuShareLiveFeed([security_id], frequency, 1024, 20)
+    from pyalgotrade.cn.tushare.barfeed import TuShareLiveFeed
+    liveFeed = TuShareLiveFeed([security_id], frequency, 1024, 5)
 
     strat = strat(liveFeed, security_id, *paras)
         
     strat.run()
     
+    
 if __name__ == "__main__": 
     strat = thrSMA    
-    security_id = '000001'
-    market = 'SZ'
+    security_id = '600848'
+    market = 'SH'
     frequency = bar.Frequency.MINUTE
     paras = [2, 20, 60, 10]
     
     runStratOnTushare(strat, paras, security_id, market, frequency)
+    
 
 
 
-
-
+    
 
 
 

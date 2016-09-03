@@ -6,13 +6,6 @@ Created on Tue Dec 01 10:12:01 2015
 """
 
 
-# 以下模块仅测试用
-import sys
-sys.path.append("..\\")
-from pyalgotrade import plotter
-from pyalgotrade import bar
-from pyalgotrade import dataseries
-# 以上模块仅测试用
 from pyalgotrade.broker.fillstrategy import DefaultStrategy
 from pyalgotrade import strategy
 from pyalgotrade.dataseries import SequenceDataSeries
@@ -20,9 +13,6 @@ from pyalgotrade.technical import cross
 import numpy as np
 from pyalgotrade.broker.backtesting import TradePercentage
 from pyalgotrade.technical import bollinger
-
-
-
 
 
 class Bollinger_Bandit(strategy.BacktestingStrategy):
@@ -222,36 +212,54 @@ class Bollinger_Bandit(strategy.BacktestingStrategy):
     def exitShortSignal(self):
         if self.__exitShort1 and self.__exitShort2 and not self.__shortPos.exitActive():
             return True 
-
-
-
-if __name__ == "__main__":
-    #############################################para set ############################33    
+            
+            
+    
+def testStrategy():
+    from pyalgotrade import bar
+    from pyalgotrade import plotter
+    
     strat = Bollinger_Bandit    
-    instrument = '000001'
-    market = 'SZ'
-    fromDate = '20120101'
-    toDate ='20160101'
-    frequency = bar.Frequency.DAY
+    instrument = '600288'
+    market = 'SH'
+    fromDate = '20150101'
+    toDate ='20150601'
+    frequency = bar.Frequency.MINUTE
     paras = [40, 15, 35, 15, 60, 2]
     plot = True
     
     #############################################path set ############################33 
+    import os
     if frequency == bar.Frequency.MINUTE:
-        path = "..\\histdata\\min\\"
+        path = os.path.join('..', 'histdata', 'minute')
     elif frequency == bar.Frequency.DAY:
-        path = "..\\histdata\\day\\"
-    filepath = path + instrument + market + ".csv"
+        path = os.path.join('..', 'histdata', 'day')
+    filepath = os.path.join(path, instrument + market + ".csv")
     
     
     #############################################don't change ############################33  
-    from pyalgotrade.bar import Frequency
-    from pyalgotrade.barfeed.csvfeed import GenericBarFeed
-
+    from pyalgotrade.cn.csvfeed import Feed
     
-    barfeed = GenericBarFeed(Frequency.DAY)
-    barfeed.addBarsFromCSV(instrument, filepath)
-    strat = strat(barfeed, instrument, *paras)
+    barfeed = Feed(frequency)
+    barfeed.setDateTimeFormat('%Y-%m-%d %H:%M:%S')
+    barfeed.loadBars(instrument, market, fromDate, toDate, filepath)
+    
+    pyalgotrade_id = instrument + '.' + market
+    strat = strat(barfeed, pyalgotrade_id, *paras)
+    
+    from pyalgotrade.stratanalyzer import returns
+    from pyalgotrade.stratanalyzer import sharpe
+    from pyalgotrade.stratanalyzer import drawdown
+    from pyalgotrade.stratanalyzer import trades
+    
+    retAnalyzer = returns.Returns()
+    strat.attachAnalyzer(retAnalyzer)
+    sharpeRatioAnalyzer = sharpe.SharpeRatio()
+    strat.attachAnalyzer(sharpeRatioAnalyzer)
+    drawDownAnalyzer = drawdown.DrawDown()
+    strat.attachAnalyzer(drawDownAnalyzer)
+    tradesAnalyzer = trades.Trades()
+    strat.attachAnalyzer(tradesAnalyzer)
     
     if plot:
         plt = plotter.StrategyPlotter(strat, True, True, True)
@@ -260,9 +268,26 @@ if __name__ == "__main__":
     
     if plot:
         plt.plot()
+        
 
-    
 
+    #夏普率
+    sharp = sharpeRatioAnalyzer.getSharpeRatio(0.05)
+    #最大回撤
+    maxdd = drawDownAnalyzer.getMaxDrawDown()
+    #收益率
+    return_ = retAnalyzer.getCumulativeReturns()[-1]
+    #收益曲线
+    return_list = []
+    for item in retAnalyzer.getCumulativeReturns():
+        return_list.append(item)
+        
+
+
+
+if __name__ == "__main__":
+    #############################################para set ############################33    
+    testStrategy()
 
 
 
