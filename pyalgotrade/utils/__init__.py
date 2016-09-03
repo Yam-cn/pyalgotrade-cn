@@ -18,6 +18,7 @@
 .. moduleauthor:: Gabriel Martin Becedillas Ruiz <gabriel.becedillas@gmail.com>
 """
 
+
 def get_change_percentage(actual, prev):
     if actual is None or prev is None or prev == 0:
         raise Exception("Invalid values")

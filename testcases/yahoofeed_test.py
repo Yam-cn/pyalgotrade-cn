@@ -258,3 +258,20 @@ class FeedTestCase(common.TestCase):
         for i in range(len(ds)):
             self.assertEqual(ds[i].getDateTime(), reloadedDs[i].getDateTime())
             self.assertEqual(ds[i].getClose(), reloadedDs[i].getClose())
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
