@@ -20,9 +20,9 @@ import Queue
 
 import pytz
 
-from pyalgotrade.cn.CTP.api.CTPMdApi import CTPMdApi
+from api.CTPMdApi import CTPMdApi
 
-from pyalgotrade.cn import bar
+from pyalgotrade import bar
 from pyalgotrade import barfeed
 from pyalgotrade import resamplebase
 from pyalgotrade.utils import dt
@@ -54,7 +54,7 @@ class GetBarThread(PollingThread):
 
         self._ticksDf = {}
         self.__lock = Lock()
-        
+
         for identifier in self.__identifiers:
             self._ticksDf[identifier] = DataFrame(columns=['time', 'price', 'volume', 'amount'])
 
@@ -172,81 +172,28 @@ class CTPLiveFeed(barfeed.BaseBarFeed):
         except Queue.Empty:
             pass
         return ret
+        
+        
+def test_feed():
+    feed = CTPLiveFeed(['au1702', 'ag1702'], 30)
+    feed.start()
+    while True:
+        bars = feed.getNextBars()
+        if bars:
+            b = bars.getBar('au1702')
+            if b:
+                print '__________________au__________________'
+                print 'time', b.getDateTime(), 'open:',b.getOpen(),  'high:', b.getHigh(), ' low: ', b.getLow(), \
+                    'close: ', b.getClose(), 'volume:', b.getVolume(), 'amount:', b.getAmount()
+                    
+                    
+            b = bars.getBar('ag1702')
+            if b:
+                print '__________________ag__________________'
+                print 'time', b.getDateTime(), 'open:',b.getOpen(),  'high:', b.getHigh(), ' low: ', b.getLow(), \
+                    'close: ', b.getClose(), 'volume:', b.getVolume(), 'amount:', b.getAmount()
 
 
 if __name__ == '__main__':
-
-    import threading
-
-    class Simulate_ctp_qutation(threading.Thread):
-        def __init__(self, api):
-            super(Simulate_ctp_qutation, self).__init__()
-            self._api = api
-            pass
-
-        def run(self):
-            while True:
-                import time
-                from random import uniform, randint
-                time.sleep(2)
-
-                which = randint(1,3)
-
-                data1 = dict()
-                data1['InstrumentID'] = 'au1606'
-                data1['UpdateTime'] = utcnow().strftime("%H:%M:%S")
-                price = uniform(9, 10)
-                data1['LastPrice'] = price
-                data1['Volume'] = randint(100, 200)
-                data1['Turnover'] = uniform(200,300)
-                data1['PreClosePrice'] = price - 0.1
-
-
-                data2 = dict()
-                data2['InstrumentID'] = 'IF1505'
-                data2['UpdateTime'] = utcnow().strftime("%H:%M:%S")
-                price = uniform(9, 10)
-                data2['LastPrice'] = price
-                data2['Volume'] = randint(100, 200)
-                data2['Turnover'] = uniform(200,300)
-                data2['PreClosePrice'] = price - 0.1
-
-                if which == 1:
-                    print data1
-                    self._api.onRtnDepthMarketData(data1)
-                elif which == 2:
-                    print data2
-                    self._api.onRtnDepthMarketData(data2)
-                else: # both
-                    print data1
-                    print data2
-                    self._api.onRtnDepthMarketData(data1)
-                    self._api.onRtnDepthMarketData(data2)
-
-
-    # ctp = CTPLiveFeed(['IF1601', 'IF1602'], 30)
-    ctp = CTPLiveFeed(['au1606'], 30)
-    ctp.start()
-
-    #t = Simulate_ctp_qutation(ctp._thread._ctpMdApi)
-    #t.start()
-
-    while True:
-        bars = ctp.getNextBars()
-        if bars:
-            b = bars.getBar('au1606')
-            if b:
-                print 'au1606 quotation info: '
-                print '          time', b.getDateTime(), 'open:',b.getOpen(),  'high:', b.getHigh(), ' low: ', b.getLow(), \
-                    'close: ', b.getClose(), 'volume:', b.getVolume(), 'amount:', b.getAmount()
-
-            b = bars.getBar('IF1602')
-            if b:
-                print 'IF1505 quotation info: '
-                print '          time', b.getDateTime(), 'open:',b.getOpen(),  'high:', b.getHigh(), ' low: ', b.getLow(), \
-                    'close: ', b.getClose(), 'volume:', b.getVolume(), 'amount:', b.getAmount()
-
-
-
-
-
+    test_feed()
+    

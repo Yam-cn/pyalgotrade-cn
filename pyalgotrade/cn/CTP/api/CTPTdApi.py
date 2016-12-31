@@ -3,15 +3,34 @@
 import os
 
 from vnctptd import TdApi
-from pyalgotrade.Xtrader.utils.logger import future_srv_logger as logger
-from pyalgotrade.Xtrader.futureServer.api.ctpDataType import defineDict
+from ctpDataType import defineDict
+
+from pyalgotrade.broker import Order
+from pyalgotrade.logger import getLogger
+
+
+class EventType(object):
+    ON_LOGIN = 1
+    ON_LOGOUT = 2
+    ON_ORDER_ACCEPTED = 3
+    ON_ORDER_ACTION = 4
+    ON_TRADE = 5
+    ON_ORDER = 6
+    ON_TRADE_ERROR = 7
+    ON_ORDER_ERROR = 8
+    ON_QUERY_ORDER = 9
+    ON_QUERY_TRADE = 10
+    ON_QUERY_POSITION = 11
+    ON_QUERY_ACCOUNT = 12
+    ON_QUERY_INSTRUMENT = 13
+
 
 ########################################################################
 class CTPTdApi(TdApi):
     """CTP交易API实现"""
     
     #----------------------------------------------------------------------
-    def __init__(self, server):
+    def __init__(self, msg_queue):
         """API对象的初始化函数"""
         super(CTPTdApi, self).__init__()
         
@@ -28,15 +47,19 @@ class CTPTdApi(TdApi):
         
         self.frontID = None            # 前置机编号
         self.sessionID = None          # 会话编号
-
-        self._server = server
-
+        
+        self.__msg_queue= msg_queue
+        self.__oders = set()
+        
+        self._logger = getLogger('CTP')
+        
+    
     #----------------------------------------------------------------------
     def onFrontConnected(self):
         """服务器连接"""
         self.connectionStatus = True
         
-        logger.info(u'交易服务器连接成功')
+        self._logger.info('CTP trading connected')
         
         self.login()
     
@@ -46,7 +69,7 @@ class CTPTdApi(TdApi):
         self.connectionStatus = False
         self.loginStatus = False
 
-        logger.warning(u'交易服务器连接断开')
+        self._logger.info('CTP trading disconnected')
 
     #----------------------------------------------------------------------
     def onHeartBeatWarning(self, n):
@@ -56,22 +79,24 @@ class CTPTdApi(TdApi):
     #----------------------------------------------------------------------
     def onRspAuthenticate(self, data, error, n, last):
         """"""
-        pass
-
-    def _log_err(self, title,  data, error):
-        logger.warning('%s, %s:%s, detail info:%s' % (title, error['ErrorID'], error['ErrorMsg'].decode('gbk'),
-                       str(data)))
-
+        if error['ErrorID'] == 0:
+            pass
+        
+        else:
+            self._logger.error({'error_id': error['ErrorID']})
+            
+        
     #----------------------------------------------------------------------
     def onRspUserLogin(self, data, error, n, last):
         """登陆回报"""
         # 如果登录成功，推送日志信息
+        
         if error['ErrorID'] == 0:
             self.frontID = data['FrontID']
             self.sessionID = data['SessionID']
             self.loginStatus = True
 
-            logger.info(u'交易服务器登录完成')
+            self._logger.info('CTP trading login successful')
             
             # 确认结算信息
             req = {}
@@ -79,11 +104,11 @@ class CTPTdApi(TdApi):
             req['InvestorID'] = self.userID
             self.reqID += 1
             self.reqSettlementInfoConfirm(req, self.reqID)
-
+            
         # 否则，推送错误信息
         else:
-            self._log_err(u'交易服务器登录失败', data, error)
-
+            self._logger.error({'error_id':error['ErrorID']})
+            
     #----------------------------------------------------------------------
     def onRspUserLogout(self, data, error, n, last):
         """登出回报"""
@@ -91,12 +116,12 @@ class CTPTdApi(TdApi):
         if error['ErrorID'] == 0:
             self.loginStatus = False
 
-            logger.info(u'交易服务器登出完成')
-                
+            self._logger.info(u'logout successful')
+            
         # 否则，推送错误信息
         else:
-            self._log_err(u'服务器登出失败', data, error)
-
+            self._logger.error({'error_id':error['ErrorID']})
+            
     #----------------------------------------------------------------------
     def onRspUserPasswordUpdate(self, data, error, n, last):
         """"""
@@ -109,26 +134,33 @@ class CTPTdApi(TdApi):
     
     #----------------------------------------------------------------------
     def onRspOrderInsert(self, data, error, n, last):
-        """发单错误（柜台）"""
-        # err.errorID = error['ErrorID']
-        # err.errorMsg = error['ErrorMsg'].decode('gbk')
-        self._log_err(u'发单错误（柜台）', data, error)
+        """ order insert return """
+        pass
+            
 
     #----------------------------------------------------------------------
     def onRspParkedOrderInsert(self, data, error, n, last):
         """"""
         pass
     
+    
     #----------------------------------------------------------------------
     def onRspParkedOrderAction(self, data, error, n, last):
         """"""
         pass
     
+    
     #----------------------------------------------------------------------
     def onRspOrderAction(self, data, error, n, last):
-        """撤单错误（柜台）"""
-        self._log_err(u'撤单错误（柜台）', data, error)
-
+        """modify order"""
+        if error['ErrorID'] == 0:
+            msg = {'event_type': EventType.ON_ORDER_ACTION}
+            msg['order_id'] = data["OrderRef"]
+            self.__msg_queue.put(msg)
+        else:
+            self._logger.error({'error_id': error['ErrorID']})
+            
+        
     #----------------------------------------------------------------------
     def onRspQueryMaxOrderVolume(self, data, error, n, last):
         """"""
@@ -138,22 +170,25 @@ class CTPTdApi(TdApi):
     def onRspSettlementInfoConfirm(self, data, error, n, last):
         """确认结算信息回报"""
         
-        logger.info(u'结算信息确认完成')
-        self._server.onLogin(self.frontID, self.sessionID)
-
-        # 查询合约代码
-        self.reqID += 1
-        self.reqQryInstrument({}, self.reqID)
+        if error['ErrorID'] == 0:
+            msg = {}
+            msg['event_type'] = EventType.ON_LOGIN
+            self.__msg_queue.put(msg)
+        else:
+            self._logger.error({'error_id': error['ErrorID']})
+        
         
     #----------------------------------------------------------------------
     def onRspRemoveParkedOrder(self, data, error, n, last):
         """"""
         pass
     
+    
     #----------------------------------------------------------------------
     def onRspRemoveParkedOrderAction(self, data, error, n, last):
         """"""
         pass
+    
     
     #----------------------------------------------------------------------
     def onRspExecOrderInsert(self, data, error, n, last):
@@ -171,40 +206,101 @@ class CTPTdApi(TdApi):
         pass
     
     #----------------------------------------------------------------------
-    def onRspQuoteInsert(self, data, error, n, last):
+    def onRspLockInsert(self, data, error, n, last):
         """"""
         pass
+    
+    #----------------------------------------------------------------------
+    def onRspQuoteInsert(self, data, error, n, last):
+        """"""
+        print data
     
     #----------------------------------------------------------------------
     def onRspQuoteAction(self, data, error, n, last):
         """"""
+        print data
+        
+    #----------------------------------------------------------------------
+    def onRspCombActionInsert(self, data, error, n, last):
+        """"""
         pass
     
     #----------------------------------------------------------------------
+    ##TODO: return message is null, might be a bug in vnctptd.cpp
     def onRspQryOrder(self, data, error, n, last):
         """"""
-        pass
+        data['if_last'] = last
+        self.__msg_queue.put(data)
     
     #----------------------------------------------------------------------
+    ##TODO: return message is null, might be a bug in vnctptd.cpp
     def onRspQryTrade(self, data, error, n, last):
         """"""
-        pass
+        data['if_last'] = last
+        self.__msg_queue.put(data)
     
     #----------------------------------------------------------------------
+    ##TODO: 
     def onRspQryInvestorPosition(self, data, error, n, last):
         """持仓查询回报"""
-        self._server.onPosition(data)
-
+        #print data
+        if error['ErrorID'] == 0:
+            msg = {'event_type': EventType.ON_QUERY_POSITION}
+            msg['instrument_id'] = data['InstrumentID']
+            msg['exchange_id'] = data['ExchangeID']
+            msg['direction'] = data['PosiDirection']
+            msg['open_volume'] = data['OpenVolume']
+            msg['close_volume'] = data['CloseVolume']
+            msg['frozen_margin'] = data['FrozenMargin']
+            msg['pre_margin'] = data['PreMargin']
+            msg['exchange_margin'] = data['ExchangeMargin']
+            msg['position_profit'] = data["PositionProfit"]
+            msg['close_profit'] = data['CloseProfit']
+            msg['commission'] = data["Commission"]
+            msg['pre_settlement_price'] = data['PreSettlementPrice']
+            msg['settlement_price'] = data['SettlementPrice']
+            msg['use_margin'] = data['UseMargin']
+            msg['position'] = data['Position']
+            msg['pre_position'] = data['YdPosition']
+            msg['open_cost'] = data['OpenCost']
+            msg['position_cost'] = data['PositionCost']
+            msg['if_last'] = last
+            self.__msg_queue.put(msg)
+            
+        else:
+            self._logger.error({'error_id': error['ErrorID']})
+    
     #----------------------------------------------------------------------
     def onRspQryTradingAccount(self, data, error, n, last):
         """资金账户查询回报"""
-        self._server.onAccount(data)
+        #print data
+        if error['ErrorID'] == 0:
+            msg = {'event_type': EventType.ON_QUERY_ACCOUNT}
+            
+            msg['cash_available'] = data['Available']
+            msg['mortgage'] = data['Mortgage']
+            msg['balance'] = data['Balance']
+            msg['margin'] = data["CurrMargin"]
+            msg['position_profit'] = data["PositionProfit"]
+            msg['pre_margin'] = data['PreMargin']
+            msg['trading_day'] = data['TradingDay']
+            msg['exchange_margin'] = data['ExchangeMargin']
+            msg['pre_deposit'] = data['PreDeposit']
+            msg['pre_balance'] = data['PreBalance']
+            msg['curr_margin'] = data['CurrMargin']
+            msg['close_profit'] = data['CloseProfit']
+            msg['if_last'] = last
+            self.__msg_queue.put(msg)
+            
+        else:
+            self._logger.error({'error_id': error['ErrorID']})
+        
 
     #----------------------------------------------------------------------
     def onRspQryInvestor(self, data, error, n, last):
         """投资者查询回报"""
         pass
-    
+        
     #----------------------------------------------------------------------
     def onRspQryTradingCode(self, data, error, n, last):
         """"""
@@ -214,7 +310,7 @@ class CTPTdApi(TdApi):
     def onRspQryInstrumentMarginRate(self, data, error, n, last):
         """"""
         pass
-    
+        
     #----------------------------------------------------------------------
     def onRspQryInstrumentCommissionRate(self, data, error, n, last):
         """"""
@@ -224,7 +320,7 @@ class CTPTdApi(TdApi):
     def onRspQryExchange(self, data, error, n, last):
         """"""
         pass
-    
+        
     #----------------------------------------------------------------------
     def onRspQryProduct(self, data, error, n, last):
         """"""
@@ -233,19 +329,45 @@ class CTPTdApi(TdApi):
     #----------------------------------------------------------------------
     def onRspQryInstrument(self, data, error, n, last):
         """合约查询回报"""
-        pass
-        # print data
+        if error['ErrorID'] == 0:
+            ret = {}
+            ret['instrument_id'] = data['InstrumentID']
+            ret['exchange_id'] = data['ExchangeID']
+            ret['product_id'] = data['ProductID']
+            ret['is_trading'] = data['IsTrading']
+            ret['expire_date'] = data['ExpireDate']
+            ret['price_tick'] = data['PriceTick']
+            ret['max_market_order_volume'] = data['MaxMarketOrderVolume']
+            ret['min_market_order_volume'] = data['MinMarketOrderVolume']
+            ret['max_limit_order_volume'] = data['MaxLimitOrderVolume']
+            ret['min_limit_order_volume'] = data['MinLimitOrderVolume']
+            ret['position_date_type'] = data['PositionDateType']
+            ret['position_type'] = data['PositionType']
+            ret['volume_multiple'] = data['VolumeMultiple']
+            ret['underlying_multiple'] = data['UnderlyingMultiple']
+            ret['product_class'] = data['ProductClass']
+            ret['if_last'] = last
+
+            data['if_last'] = last
+            self.__msg_queue.put(data)
+        else:
+            self._logger.error({'error_id': error['ErrorID']})
         
 
     #----------------------------------------------------------------------
     def onRspQryDepthMarketData(self, data, error, n, last):
         """"""
         pass
-    
+        
     #----------------------------------------------------------------------
     def onRspQrySettlementInfo(self, data, error, n, last):
         """查询结算信息回报"""
-        pass
+        if error['ErrorID'] == 0:
+            pass
+            #self._server.onAccount(data)
+            
+        else:
+            self._logger.error({'error_id': error['ErrorID']})
     
     #----------------------------------------------------------------------
     def onRspQryTransferBank(self, data, error, n, last):
@@ -308,6 +430,16 @@ class CTPTdApi(TdApi):
         pass
     
     #----------------------------------------------------------------------
+    def onRspQryProductExchRate(self, data, error, n, last):
+        """"""
+        pass
+    
+    #----------------------------------------------------------------------
+    def onRspQryProductGroup(self, data, error, n, last):
+        """"""
+        pass
+    
+    #----------------------------------------------------------------------
     def onRspQryOptionInstrTradeCost(self, data, error, n, last):
         """"""
         pass
@@ -333,6 +465,36 @@ class CTPTdApi(TdApi):
         pass
     
     #----------------------------------------------------------------------
+    def onRspQryLock(self, data, error, n, last):
+        """"""
+        pass
+    
+    #----------------------------------------------------------------------
+    def onRspQryLockPosition(self, data, error, n, last):
+        """"""
+        pass
+    
+    #----------------------------------------------------------------------
+    def onRspQryInvestorLevel(self, data, error, n, last):
+        """"""
+        pass
+
+    #----------------------------------------------------------------------
+    def onRspQryExecFreeze(self, data, error, n, last):
+        """"""
+        pass
+
+    #----------------------------------------------------------------------
+    def onRspQryCombInstrumentGuard(self, data, error, n, last):
+        """"""
+        pass
+
+    #----------------------------------------------------------------------
+    def onRspQryCombAction(self, data, error, n, last):
+        """"""
+        pass
+    
+    #----------------------------------------------------------------------
     def onRspQryTransferSerial(self, data, error, n, last):
         """"""
         pass
@@ -345,38 +507,69 @@ class CTPTdApi(TdApi):
     #----------------------------------------------------------------------
     def onRspError(self, error, n, last):
         """错误回报"""
-        self._log_err(u'错误回报', '', error)
-
+        if error['ErrorID'] == 0:
+            pass
+            #self._server.onAccount(data)
+            
+        else:
+            pass
+            #self._logger.error({'error_id': error['ErrorID'], 'msg':error['ErrorMsg']})
+        
     #----------------------------------------------------------------------
     def onRtnOrder(self, data):
-        """报单回报"""
-        # 更新最大报单编号
+        """order return"""    
+        #print data
+        # update order ref for manual order
         newref = data['OrderRef']
         self.orderRef = max(self.orderRef, int(newref))
-
-        # print 'onRtnOrder: ', data
-        self._server.onOrder(data)
-        # print data['StatusMsg'].decode('gbk')
-
-
+        
+        if self.orderRef in self.__oders:
+            msg = {'event_type': EventType.ON_ORDER_ACCEPTED}
+            msg['order_id'] = data["OrderRef"]
+            self.__msg_queue.put(msg)
+        else:
+            print ('unrecognized order, orderRef: %d'%self.orderRef)
+        
+        
     #----------------------------------------------------------------------
     def onRtnTrade(self, data):
-        """成交回报"""
-        logger.debug(u'成交回报， onRtnTrade,%s'%data.get('StatusMsg', '').decode('gbk'))
-        self._server.onTrade(data)
+        """trade return"""
+        print data
+        if int(data["OrderRef"]) in self.__oders:
+            msg = {'event_type': EventType.ON_TRADE}
+            msg['order_id'] = data["OrderRef"]
+            msg['trade_type'] = data['TradeType']
+            msg['volume'] = data['Volume']
+            msg['trade_id'] = data['OrderSysID']
+            msg['price'] = data['Price']
+            msg['instrument_id'] = data['InstrumentID']
+            msg['exchange_id'] = data['ExchangeID']
+            #msg['commision'] = data['Commision']
+            
+            msg['datetime'] = data['TradeDate'] + ' ' + data['TradeTime']
+            
+            msg['direction'] = data['Direction']
+            msg['offset'] = data['OffsetFlag']
+            self.__msg_queue.put(msg)
+        else:
+            #self._logger.info('trade return for unrecognized order, orderRef: %d'%self.orderRef)
+            print ('unrecognized trade, orderRef: %d'%self.orderRef)
+        
 
     #----------------------------------------------------------------------
+    ##TODO:
     def onErrRtnOrderInsert(self, data, error):
         """发单错误回报（交易所）"""
-        self._log_err(u'发单错误回报（交易所）onErrRtnOrderInsert', data, error)
-
-        self._server.onErrOrder(data)
-
+        pass
+    
+    
     #----------------------------------------------------------------------
+    ##TODO:
     def onErrRtnOrderAction(self, data, error):
         """撤单错误回报（交易所）"""
-        self._log_err(u'撤单错误回报(交易所) onErrRtnOrderAction', data, error)
-
+        pass
+        
+    
     #----------------------------------------------------------------------
     def onRtnInstrumentStatus(self, data):
         """"""
@@ -428,6 +621,31 @@ class CTPTdApi(TdApi):
         pass
     
     #----------------------------------------------------------------------
+    def onRtnCFMMCTradingAccountToken(self, data):
+        """"""
+        pass
+
+    #----------------------------------------------------------------------
+    def onRtnLock(self, data):
+        """"""
+        pass
+
+    #----------------------------------------------------------------------
+    def onErrRtnLockInsert(self, data, error):
+        """"""
+        pass
+
+    #----------------------------------------------------------------------
+    def onRtnCombAction(self, data):
+        """"""
+        pass
+
+    #----------------------------------------------------------------------
+    def onErrRtnCombActionInsert(self, data, error):
+        """"""
+        pass
+    
+    #----------------------------------------------------------------------
     def onRtnForQuoteRsp(self, data):
         """"""
         pass
@@ -459,6 +677,11 @@ class CTPTdApi(TdApi):
     
     #----------------------------------------------------------------------
     def onRspQryBrokerTradingAlgos(self, data, error, n, last):
+        """"""
+        pass
+    
+    #----------------------------------------------------------------------
+    def onRspQueryCFMMCTradingAccountToken(self, data, error, n, last):
         """"""
         pass
     
@@ -583,14 +806,14 @@ class CTPTdApi(TdApi):
         # 如果尚未建立服务器连接，则进行连接
         if not self.connectionStatus:
             # 创建C++环境中的API对象，这里传入的参数是需要用来保存.con文件的文件夹路径
-            path = os.path.dirname(os.path.abspath(__file__)) + '\\tdconnection\\'
+            path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tdconnection')
             if not os.path.exists(path):
                 os.makedirs(path)
-            self.createFtdcTraderApi(path)
+            self.createFtdcTraderApi(path +'/')
 
             # 从上次收到的续传
-            self.subscribePrivateTopic(1)
-            self.subscribePublicTopic(1)
+            self.subscribePrivateTopic(0)
+            self.subscribePublicTopic(0)
 
             self.registerFront(self.address)
             
@@ -600,54 +823,110 @@ class CTPTdApi(TdApi):
         # 若已经连接但尚未登录，则进行登录
         else:
             if not self.loginStatus:
-                self.login()    
+                self.login()  
+                
+                
     
     #----------------------------------------------------------------------
     def login(self):
         """连接服务器"""
         # 如果填入了用户名密码等，则登录
+        
         if self.userID and self.password and self.brokerID:
             req = dict()
             req['UserID'] = self.userID
             req['Password'] = self.password
             req['BrokerID'] = self.brokerID
             self.reqID += 1
-            self.reqUserLogin(req, self.reqID)   
+            self.reqUserLogin(req, self.reqID)  
+            
         
     #----------------------------------------------------------------------
     def qryAccount(self):
         """查询账户"""
         self.reqID += 1
-        self.reqQryTradingAccount({}, self.reqID)
+        req = {}
+        #req['BrokerID'] = self.brokerID
+        #req['InvestorID'] = self.userID
+        self.reqQryTradingAccount(req, self.reqID)
+        
+    #----------------------------------------------------------------------
+    def qryTrade(self):
+        'query orders filled'
+        self.reqID += 1
+        req = {}
+        req['BrokerID'] = self.brokerID
+        req['InvestorID'] = self.userID
+        self.reqQryTrade(req, self.reqID)
+    
+    
+    #----------------------------------------------------------------------
+    def qryOrder(self):
+        'query orders accepted'
+        self.reqID += 1
+        req = {}
+        req['BrokerID'] = self.brokerID
+        req['InvestorID'] = self.userID
+        self.reqQryOrder(req, self.reqID)
+        
         
     #----------------------------------------------------------------------
     def qryPosition(self):
         """查询持仓"""
         self.reqID += 1
-        req = dict()
+        req = {}
         req['BrokerID'] = self.brokerID
         req['InvestorID'] = self.userID
         self.reqQryInvestorPosition(req, self.reqID)
-
+        
+        # return for future server getting all of positions
+        return self.reqID
+        
+        
+    #----------------------------------------------------------------------
+    def qryInstrument(self):
+        """ """
+        self.reqID += 1
+        req = dict()
+        self.reqQryInstrument(req, self.reqID)
+        
         # return for future server getting all of positions
         return self.reqID
         
     #----------------------------------------------------------------------
-    def sendOrder(self, symbol, direction, priceType, offset, price, volume):
-        """发单"""
+    def sendOrder(self, symbol, action, price, volume):
+        """Send Order
+        Args:
+            symbol: str, 'IF1610'
+            action: int, Pyalgotrade.broker.Order.Action
+            price: float,  3225.2
+            volume: int, 2
+        """
         self.reqID += 1
         self.orderRef += 1
-
+        
         req = dict()
-
+        
+        if action == Order.Action.BUY:
+            req['Direction'] = defineDict['THOST_FTDC_D_Buy']
+            req['CombOffsetFlag'] = defineDict['THOST_FTDC_OF_Open']
+        elif action == Order.Action.BUY_TO_COVER:
+            req['Direction'] = defineDict['THOST_FTDC_D_Buy']
+            req['CombOffsetFlag'] = defineDict['THOST_FTDC_OF_CloseToday']
+        elif action == Order.Action.SELL:
+            req['Direction'] = defineDict['THOST_FTDC_D_Sell']
+            req['CombOffsetFlag'] = defineDict['THOST_FTDC_OF_CloseToday']
+        elif action == Order.Action.SELL_SHORT:
+            req['Direction'] = defineDict['THOST_FTDC_D_Sell']
+            req['CombOffsetFlag'] = defineDict['THOST_FTDC_OF_Open']
+            
+        
         req['InstrumentID'] = symbol
         req['LimitPrice'] = price
         req['VolumeTotalOriginal'] = volume
         
-        req['OrderPriceType'] = priceType
-        req['Direction'] = direction
-        req['CombOffsetFlag'] = offset
-
+        req['OrderPriceType'] = defineDict['THOST_FTDC_OPT_LimitPrice'] ##use only limited order
+        
         req['OrderRef'] = str(self.orderRef)
         req['InvestorID'] = self.userID
         req['UserID'] = self.userID
@@ -661,25 +940,27 @@ class CTPTdApi(TdApi):
         req['VolumeCondition'] = defineDict['THOST_FTDC_VC_AV']              # 任意成交量
         req['MinVolume'] = 1                                                 # 最小成交量为1
         
+        
         self.reqOrderInsert(req, self.reqID)
-
-        logger.debug('insert new order:%s'%req)
+        self.__oders.add(self.orderRef)
+        #print 111111
+        self._logger.debug('insert new order:%s'%req)
         
         return str(self.orderRef)
     
     #----------------------------------------------------------------------
-    def cancelOrder(self, instrument, orderID, frontID, sessionID):
+    def cancelOrder(self, instrument, orderID):
         """撤单"""
         self.reqID += 1
-
+        
         req = {}
 
         # 使用 frontID, sessionID, orderID三元组
         req['InstrumentID'] = instrument
         # req['ExchangeID'] = 'DCE'
         req['OrderRef'] = orderID
-        req['FrontID'] = frontID
-        req['SessionID'] = sessionID
+        req['FrontID'] = self.frontID
+        req['SessionID'] = self.sessionID
         
         req['ActionFlag'] = defineDict['THOST_FTDC_AF_Delete']
         req['BrokerID'] = self.brokerID
@@ -691,4 +972,25 @@ class CTPTdApi(TdApi):
     def close(self):
         """关闭"""
         self.exit()
+        
+        
+    def getLogger(self):
+        return self._logger
+        
 
+    
+if __name__ == '__main__':
+    pass
+    #test_qry(10)
+    #test_order(10)
+    #account = load_account()
+            
+        
+        
+        
+        
+        
+        
+    
+
+        
