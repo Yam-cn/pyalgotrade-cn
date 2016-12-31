@@ -19,21 +19,16 @@ Created on Sun Dec 11 14:31:04 2016
 
 import time
 import Queue
-import threading
+import pymongo
 from datetime import datetime
 
 from pyalgotrade import broker
 from pyalgotrade.logger import getLogger
-from pyalgotrade.cn.ctp import load_account
+from pyalgotrade.cn.utl import getMongoInfo
 from api import CTPTdApi
 
 
 logger = getLogger('CTP_broker')
-
-class MsgMonitor(threading.Thread):
-    def __init__(self, msg_queue):
-        pass
-    
 
 class FutureTraits(broker.InstrumentTraits):
     def roundQuantity(self, quantity):
@@ -61,16 +56,24 @@ class LiveBroker(broker.Broker):
     QUEUE_TIMEOUT = 0.01
     
     ##TODO: need a margin value dict to calculate if there is enough cash for orders
-    def __init__(self):
+    def __init__(self, account_id):
         broker.Broker.__init__(self)
+        self.__account_id = account_id
         self.__stop = False
-        self.__cash = 0
-        self.__shares = {}
+        self.__cash_available = 0
+        self.__margin = 0
+        self.__cash_frozen = 0
+        
+        self.__positions = {}
         self.__activeOrders = {}
+        
+        mongo_info = getMongoInfo()
+        self.__mongo = pymongo.MongoClient(host=mongo_info['host'],\
+                                           port=mongo_info['port'])
         
         
     def login(self, timeout=10):
-        account_info = load_account()
+        account_info = self.__mongo.tradedb.account_info.find_one({'account_id': self.__account_id}) 
         address = str("tcp://" + account_info['address'] + ":" + account_info['port'])
         userid = str(account_info['userid'])
         password = str(account_info['password'])
@@ -109,17 +112,22 @@ class LiveBroker(broker.Broker):
         assert(order.getId() is not None)
         del self.__activeOrders[order.getId()]
         
-
+        
     def refreshAccountBalance(self, msg_dict):
         """Refreshes cash and BTC balance."""
 
-        self.__stop = True  # Stop running in case of errors.
-        logger.info("updating account balance.")
+        # logger.info("updating account balance.")
         # Cash
-        self.__cash = round(msg_dict['cash_available'], 2)
+        self.__cash_available = round(msg_dict['cash_available'], 2)
+        self.__margin = round(msg_dict['margin'], 2)
+        self.__cash_frozen = round(msg_dict['cash_frozen'], 2)
         
-        self.__stop = False  # No errors. Keep running.
-    
+        self.__mongo.tradedb.account_balance.find_one_and_replace({}, msg_dict)
+        
+        
+    def refreshStrategInfo(self, strategy_info_dict):
+        self.__mongo.tradedb.strategy_info.find_one_and_replace({}, strategy_info_dict)
+        
     
     def _onUserTrades(self, msg_dict):
         order = self.__activeOrders.get(msg_dict['order_id']) 
@@ -140,6 +148,8 @@ class LiveBroker(broker.Broker):
             else:
                 eventType = broker.OrderEvent.Type.PARTIALLY_FILLED
             self.notifyOrderEvent(broker.OrderEvent(order, eventType, orderExecutionInfo))
+            
+            self.__mongo.tradedb.trades.insert_one(msg_dict)
             
             # Update cash and shares.
             self.__api.qryAccount()
@@ -164,7 +174,6 @@ class LiveBroker(broker.Broker):
     def start(self):
         #self.refreshAccountBalance()
         #self.refreshOpenOrders()
-        #self._startTradeMonitor()
         self.login()
         pass
         
@@ -211,11 +220,13 @@ class LiveBroker(broker.Broker):
         return self.__cash
         
         
-    def getShares(self, instrument):
-        return self.__shares.get(instrument, 0)
+    def getInstrument(self, instrument):
+        return self.__positions.get(instrument, 0)
+        
 
     def getPositions(self):
-        return self.__shares
+        return self.__positions
+        
 
     def getActiveOrders(self, instrument=None):
         return self.__activeOrders.values()
@@ -271,6 +282,14 @@ class LiveBroker(broker.Broker):
         
         
         self.__api.cancelOrder(order.getInstrument(), str(order.getId()))
+        
+        
+    def queryPosition(self, order):
+        self.__api.qryPosition()
+    
+    
+    def queryAccount(self):
+        self.__api.qryAccount()
         
 
     # END broker.Broker interface

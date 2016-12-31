@@ -278,6 +278,7 @@ class CTPTdApi(TdApi):
             msg = {'event_type': EventType.ON_QUERY_ACCOUNT}
             
             msg['cash_available'] = data['Available']
+            msg['cash_frozen'] = data['FrozenCash']
             msg['mortgage'] = data['Mortgage']
             msg['balance'] = data['Balance']
             msg['margin'] = data["CurrMargin"]
