@@ -22,7 +22,7 @@ import pytz
 
 from api.CTPMdApi import CTPMdApi
 
-from pyalgotrade import bar
+from pyalgotrade.cn import bar
 from pyalgotrade import barfeed
 from pyalgotrade import resamplebase
 from pyalgotrade.utils import dt
@@ -107,7 +107,7 @@ class GetBarThread(PollingThread):
             amount = sum(ticks_slice.amount)
 
             return bar.BasicBar(to_market_datetime(start), open_, high, low, close, volume,
-                                0, self.__frequency, amount)
+                                amount, self.__frequency, {})
         else:
             return None
 

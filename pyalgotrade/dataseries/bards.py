@@ -67,7 +67,7 @@ class BarDataSeries(dataseries.SequenceDataSeries):
         self.__lowDS.appendWithDateTime(dateTime, bar.getLow())
         self.__volumeDS.appendWithDateTime(dateTime, bar.getVolume())
         self.__adjCloseDS.appendWithDateTime(dateTime, bar.getAdjClose())
-
+        
         # Process extra columns.
         for name, value in bar.getExtraColumns().iteritems():
             extraDS = self.__getOrCreateExtraDS(name)

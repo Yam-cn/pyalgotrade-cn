@@ -81,7 +81,7 @@ class CTPMdApi(MdApi):
 
 
         # 初始化.con文件的保存目录为\mdconnection，注意这个目录必须已存在，否则会报错
-        path = os.path.dirname(os.path.abspath(__file__)) + '\\mdconnection\\'
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mdconnection')
         if not os.path.exists(path):
             os.makedirs(path)
 
