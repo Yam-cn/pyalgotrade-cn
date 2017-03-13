@@ -65,7 +65,7 @@ class CurKlineTest(futu_open.CurKlineHandlerBase):
         if ret_code != futu_open.RET_OK:
             print("CurKlineTest: error, msg: %s" % content)
             return futu_open.RET_ERROR, content
-        print("CurKlineTest", content)
+        print("CurKline : ", content)
         
         for index, row in content.iterrows():
             open_ = row.open
@@ -86,7 +86,7 @@ class CurKlineTest(futu_open.CurKlineHandlerBase):
             if self.__last_kline_time[identifier] is None or self.__last_kline_time[identifier] < slice_start_time:
                 self.__last_kline_time[identifier] = slice_start_time
             else:
-                print "slice_start_time %s last_kline_time %s", slice_start_time, slice_start_time
+                #print "slice_start_time %s last_kline_time %s", (slice_start_time, slice_start_time)
                 continue
                         
             
@@ -105,7 +105,8 @@ class FutuLiveFeed(barfeed.BaseBarFeed):
         barfeed.BaseBarFeed.__init__(self, frequency, maxLen)
         
         
-        self.__quote_ctx = futu_open.OpenQuoteContext(host='127.0.0.1', async_port=11111)
+        self.__quote_ctx = futu_open.OpenQuoteContext(host='119.29.141.202', async_port=11111)
+        #self.__quote_ctx = futu_open.OpenQuoteContext(host='127.0.0.1', async_port=11111)
         if not isinstance(identifiers, list):
             raise Exception("identifiers must be a list")
         

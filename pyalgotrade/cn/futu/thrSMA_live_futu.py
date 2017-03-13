@@ -81,12 +81,12 @@ class thrSMA(strategy.BacktestingStrategy):
         if self.__ma2[-1]is None:
             return 
             
-        print "on bars", bars[self.__instrument].getDateTime(), bars[self.__instrument].getPrice()
+        print "on bars code ", self.__instrument, bars[self.__instrument].getDateTime(), bars[self.__instrument].getPrice()
 
         if self.__position is not None:
             if not self.__position.exitActive() and cross.cross_below(self.__ma1, self.__ma2) > 0:
                 self.__position.exitMarket()
-                print ("sell")
+                print ("=== sell")
                 print bars[self.__instrument].getDateTime(), bars[self.__instrument].getPrice()
                 #self.info("sell %s" % (bars.getDateTime()))
         
@@ -94,7 +94,7 @@ class thrSMA(strategy.BacktestingStrategy):
             if self.buyCon1() and self.buyCon2():
                 shares = int(self.getBroker().getCash() * 0.2 / bars[self.__instrument].getPrice())
                 self.__position = self.enterLong(self.__instrument, shares)
-                print ("buy")
+                print ("=== buy")
                 print bars[self.__instrument].getDateTime(), bars[self.__instrument].getPrice()
                 #self.info("buy %s" % (bars.getDateTime()))
 
