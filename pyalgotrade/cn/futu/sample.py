@@ -164,7 +164,8 @@ class TickerTest(TickerHandlerBase):
 
 if __name__ == "__main__":
 
-    quote_context = OpenQuoteContext(host='127.0.0.1', async_port=11111)
+    #quote_context = OpenQuoteContext(host='127.0.0.1', async_port=11111)
+    quote_context = OpenQuoteContext(host='119.29.141.202', async_port=11111)
 
     #quote_context.set_handler(StockQuoteTest())
     #quote_context.set_handler(OrderBookTest())
