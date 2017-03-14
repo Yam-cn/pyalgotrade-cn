@@ -7,16 +7,19 @@ Created on Tue Nov 03 13:06:56 2015
 import sys
 import os
 
-sys.path.append(os.path.dirname(__file__) + os.sep + '..'+ os.sep + '..'+ os.sep + '..')  
-#sys.path.append('D:\github\pyalgotrade-cn-master') 
-#for test
+if __name__ == '__main__':
+    import sys
+    sys.path.append("..")     
+    from pyalgotrade import bar
+    from pyalgotrade import plotter
+# 以上模块仅测试用
 
 from pyalgotrade.broker.fillstrategy import DefaultStrategy
 from pyalgotrade.broker.backtesting import TradePercentage
 from pyalgotrade import strategy
 from pyalgotrade.technical import ma
 from pyalgotrade.technical import cross
-import openft.open_quant_context as futu_open
+import pyalgotrade.cn.futu.openft.open_quant_context as futu_open
 class DoubleMA(strategy.BacktestingStrategy):
     def __init__(self, feed, instrument, n, m):
         strategy.BacktestingStrategy.__init__(self, feed)
@@ -102,17 +105,20 @@ def testStrategy():
     #############################################path set ############################33 
     import os
     if frequency == bar.Frequency.MINUTE:
-        path = os.path.join('..', '..', '..', 'histdata', 'minute')
+        path = os.path.join('..', 'histdata', 'minute')
         ktype="K_1M"
     elif frequency == bar.Frequency.DAY:
-        path = os.path.join('..', '..', '..', 'histdata', 'day')
+        path = os.path.join('..', 'histdata', 'day')
         ktype="K_DAY"
     filepath = os.path.join(path, instrument + market + ".csv")
     
     
     #############################################don't change ############################33 
     
-    quote_ctx = futu_open.OpenQuoteContext(host='127.0.0.1', async_port=11111)
+    #如果使用富途客户端，请链接127.0.0.1本地端口
+    #quote_ctx = futu_open.OpenQuoteContext(host='127.0.0.1', async_port=11111)
+    #云服务器ip，方便测试
+    quote_ctx = futu_open.OpenQuoteContext(host='119.29.141.202', async_port=11111)
     kline_table=downloadDataFromFutu(instrument, market, ktype, 500, quote_ctx)
     kline_table.to_csv(filepath,header=['id','datetime','open','close','high','low','volume','amount'])
     
